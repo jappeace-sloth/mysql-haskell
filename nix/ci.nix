@@ -16,7 +16,7 @@ in
       server.succeed("mysql -u root -e \"CREATE USER 'testMySQLHaskell'@'localhost';\"")
       server.succeed("mysql -u root -e \"CREATE DATABASE testMySQLHaskell;\"")
       server.succeed("mysql -u root -e \"GRANT ALL ON testMySQLHaskell.* TO 'testMySQLHaskell'@'localhost';\"")
-      server.succeed("mysql -u root -e \"GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'testMySQLHaskell'@'localhost';\"")
+      server.succeed("mysql -u root -e \"GRANT REPLICATION SLAVE, REPLICATION CLIENT, CREATE USER ON *.* TO 'testMySQLHaskell'@'localhost';\"")
       print(server.succeed("${package}/bin/integration/integration"))
     '';
     nodes.server = {
