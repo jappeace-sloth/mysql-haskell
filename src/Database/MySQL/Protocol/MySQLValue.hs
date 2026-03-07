@@ -424,9 +424,7 @@ putBinaryField (MySQLInt64U     n) = putWord64le n
 putBinaryField (MySQLInt64      n) = putInt64le n
 putBinaryField (MySQLFloat      x) = putFloatle x
 putBinaryField (MySQLDouble     x) = putDoublele x
-putBinaryField (MySQLYear       n) = putLenEncBytes . L.toStrict . BB.toLazyByteString $
-                                        Textual.integral n  -- this's really weird, it's not documented anywhere
-                                                            -- we must encode year into string in binary mode!
+putBinaryField (MySQLYear       n) = putWord16le (fromIntegral n)
 putBinaryField (MySQLTimeStamp (LocalTime date time)) = do putWord8 11    -- always put full
                                                            putBinaryDay date
                                                            putBinaryTime' time
