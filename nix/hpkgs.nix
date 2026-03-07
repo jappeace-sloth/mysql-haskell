@@ -9,6 +9,8 @@ pkgs.haskellPackages.override {
           postBuild = ''
             mkdir -p $out/bin/integration
             cp ./dist/build/integration/integration $out/bin/integration/integration
+            mkdir -p $out/bin/integration-sha2
+            cp ./dist/build/integration-sha2/integration-sha2 $out/bin/integration-sha2/integration-sha2
           '';
           checkPhase = ''
             echo "tests run in VM"

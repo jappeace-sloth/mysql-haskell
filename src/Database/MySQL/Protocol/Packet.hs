@@ -71,6 +71,18 @@ isEOF :: Packet -> Bool
 isEOF p = L.index (pBody p) 0 == 0xFE
 {-# INLINE isEOF #-}
 
+-- | Check if the packet is an AuthMoreData packet (first byte == 0x01).
+-- Used during the caching_sha2_password authentication handshake.
+isAuthMoreData :: Packet -> Bool
+isAuthMoreData p = L.index (pBody p) 0 == 0x01
+{-# INLINE isAuthMoreData #-}
+
+-- | Check if the packet is an AuthSwitchRequest packet (first byte == 0xFE).
+-- Same marker as EOF, but context-dependent during auth handshake.
+isAuthSwitch :: Packet -> Bool
+isAuthSwitch p = L.index (pBody p) 0 == 0xFE
+{-# INLINE isAuthSwitch #-}
+
 -- | Is there more packet to be read?
 --
 --  https://dev.mysql.com/doc/internals/en/status-flags.html

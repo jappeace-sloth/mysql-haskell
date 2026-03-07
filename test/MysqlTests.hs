@@ -29,6 +29,8 @@ tests = testCaseSteps "mysql-haskell test suit" $ \step -> do
     let ver = greetingVersion greet
         isNew = "5.6" `B.isPrefixOf` ver
                 || "5.7" `B.isPrefixOf` ver  -- from MySQL 5.6.4 and up
+                || "8."  `B.isPrefixOf` ver  -- MySQL 8.0+
+                || "9."  `B.isPrefixOf` ver  -- MySQL 9.0+
                                              -- TIME, DATETIME, and TIMESTAMP support fractional seconds
 
 
@@ -118,23 +120,23 @@ tests = testCaseSteps "mysql-haskell test suit" $ \step -> do
 
     close c
 
-    (greet, c) <- connectDetail defaultConnectInfo {ciUser = "testMySQLHaskell", ciDatabase = "testMySQLHaskell"}
-    execute_ c "SET PASSWORD = PASSWORD('123456abcdefg???')"
+    step "testing password change"
+    (_, c) <- connectDetail defaultConnectInfo {ciUser = "testMySQLHaskell", ciDatabase = "testMySQLHaskell"}
+    execute_ c "SET PASSWORD = '123456abcdefg???'"
     close c
 
-    let loginFailMsg = "ERRException (ERR {errCode = 1045, errState = \"28000\", \
-            \errMsg = \"Access denied for user 'testMySQLHaskell'@'localhost' (using password: YES)\"})"
-
-    (greet, c) <- connectDetail
+    (_, c) <- connectDetail
         defaultConnectInfo {ciUser = "testMySQLHaskell", ciDatabase = "testMySQLHaskell", ciPassword = "123456abcdefg???"}
-    execute_ c "SET PASSWORD = PASSWORD('')"
+    execute_ c "SET PASSWORD = ''"
     close c
 
     catch
         (void $ connectDetail
                     defaultConnectInfo
                         {ciUser = "testMySQLHaskell", ciDatabase = "testMySQLHaskell", ciPassword = "wrongPassWord"})
-        (\ (e :: ERRException) -> assertEqual "wrong password should fail to login" (show e) loginFailMsg)
+        (\ (e :: ERRException) -> do
+            let ERRException err = e
+            assertEqual "wrong password should fail with error 1045" 1045 (errCode err))
 
   where
     resetTestTable c = do

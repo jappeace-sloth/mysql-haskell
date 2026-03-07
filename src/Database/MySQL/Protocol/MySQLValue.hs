@@ -137,7 +137,7 @@ putParamMySQLType (MySQLDate         _)  = putFieldType mySQLTypeDate     >> put
 putParamMySQLType (MySQLTime       _ _)  = putFieldType mySQLTypeTime     >> putWord8 0x00
 putParamMySQLType (MySQLBytes        _)  = putFieldType mySQLTypeBlob     >> putWord8 0x00
 putParamMySQLType (MySQLGeometry     _)  = putFieldType mySQLTypeGeometry >> putWord8 0x00
-putParamMySQLType (MySQLBit          _)  = putFieldType mySQLTypeBit      >> putWord8 0x00
+putParamMySQLType (MySQLBit          _)  = putFieldType mySQLTypeLongLong >> putWord8 0x00
 putParamMySQLType (MySQLText         _)  = putFieldType mySQLTypeString   >> putWord8 0x00
 putParamMySQLType MySQLNull              = putFieldType mySQLTypeNull     >> putWord8 0x00
 
