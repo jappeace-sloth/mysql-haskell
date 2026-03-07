@@ -124,12 +124,12 @@ tests = testCaseSteps "mysql-haskell test suit" $ \step -> do
 
     step "testing password change"
     (_, c) <- connectDetail defaultConnectInfo {ciUser = "testMySQLHaskell", ciDatabase = "testMySQLHaskell"}
-    execute_ c "SET PASSWORD = '123456abcdefg???'"
+    execute_ c "ALTER USER 'testMySQLHaskell'@'localhost' IDENTIFIED BY '123456abcdefg???'"
     close c
 
     (_, c) <- connectDetail
         defaultConnectInfo {ciUser = "testMySQLHaskell", ciDatabase = "testMySQLHaskell", ciPassword = "123456abcdefg???"}
-    execute_ c "SET PASSWORD = ''"
+    execute_ c "ALTER USER 'testMySQLHaskell'@'localhost' IDENTIFIED BY ''"
     close c
 
     catch
