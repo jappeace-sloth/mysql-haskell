@@ -31,6 +31,8 @@ tests = testCaseSteps "mysql-haskell test suit" $ \step -> do
                 || "5.7" `B.isPrefixOf` ver  -- from MySQL 5.6.4 and up
                 || "8."  `B.isPrefixOf` ver  -- MySQL 8.0+
                 || "9."  `B.isPrefixOf` ver  -- MySQL 9.0+
+                || "10." `B.isPrefixOf` ver  -- MariaDB 10.x+
+                || "11." `B.isPrefixOf` ver  -- MariaDB 11.x+
                                              -- TIME, DATETIME, and TIMESTAMP support fractional seconds
 
 
