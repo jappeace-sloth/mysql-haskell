@@ -440,8 +440,7 @@ putBinaryField (MySQLTime sign t)  = do putWord8 12    -- always put full
                                         putBinaryTime t
 putBinaryField (MySQLGeometry bs)  = putLenEncBytes bs
 putBinaryField (MySQLBytes  bs)    = putLenEncBytes bs
-putBinaryField (MySQLBit    word)  = do putWord8 8     -- always put full
-                                        putWord64be word
+putBinaryField (MySQLBit    word)  = putWord64le word
 putBinaryField (MySQLText    t)    = putLenEncBytes (T.encodeUtf8 t)
 putBinaryField MySQLNull           = return ()
 

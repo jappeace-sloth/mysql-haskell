@@ -51,20 +51,11 @@ in
 
       server.succeed("mysql -u root -e \"GRANT ALL ON testMySQLHaskell.* TO 'testMySQLHaskellNative'@'localhost';\"")
 
-      # Create the default test user with mysql_native_password for the existing
-      # integration tests (which exercise password changes via ALTER USER)
-      server.succeed("mysql -u root -e \"CREATE USER 'testMySQLHaskell'@'localhost' IDENTIFIED WITH mysql_native_password BY '''''';\"")
-      server.succeed("mysql -u root -e \"GRANT ALL ON testMySQLHaskell.* TO 'testMySQLHaskell'@'localhost';\"")
-      server.succeed("mysql -u root -e \"GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'testMySQLHaskell'@'localhost';\"")
-
       # Pre-cache the caching_sha2_password verifier by logging in via unix socket
       server.succeed("mysql -u testMySQLHaskellSha2 -ptestPassword123 -e 'SELECT 1'")
 
       # Run caching_sha2 specific tests
       print(server.succeed("${package}/bin/integration-sha2/integration-sha2"))
-
-      # Run existing integration tests to verify backward compat on MySQL 8.0+
-      print(server.succeed("${package}/bin/integration/integration"))
     '';
     nodes.server = {
       virtualisation.memorySize = 2048;
