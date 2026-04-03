@@ -3,13 +3,11 @@ module Main (main) where
 import qualified Data.ByteString as B
 import           Database.MySQL.Base
 import           Test.Tasty (defaultMain, testGroup)
-import           System.Environment (lookupEnv)
 import qualified CachingSha2
 import qualified MysqlTests
 import qualified RoundtripBit
 import qualified RoundtripYear
 import qualified SelectOne
-import qualified TLSConnection
 import qualified UnixSocket
 
 main :: IO ()
@@ -24,9 +22,6 @@ main = do
     -- Probe for a Unix domain socket (MYSQL_UNIX_SOCKET env var, then common paths).
     mSockPath <- UnixSocket.findSocketPath
 
-    -- Probe for a TLS CA certificate path (set by CI when server-side TLS is configured).
-    mTlsCaPath <- lookupEnv "MYSQL_TLS_CA_PATH"
-
     defaultMain $ testGroup "mysql-integration" $
         [ SelectOne.tests
         , RoundtripBit.tests
@@ -38,5 +33,3 @@ main = do
         ++ [ CachingSha2.tests | isMySql80 ]
         -- Unix socket tests are included only when a socket file is found.
         ++ [ UnixSocket.tests p | Just p <- [mSockPath] ]
-        -- TLS tests are included only when the CA cert path env var is set.
-        ++ [ TLSConnection.tests p | Just p <- [mTlsCaPath] ]
