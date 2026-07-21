@@ -34,21 +34,11 @@ All instances delegate to named top-level functions (@encodeInt8@,
 @decodeInt8@, ...) so the conversions can be used, tested and grepped
 without the class.
 
--- Decision: one combined class instead of separate @ToField@/@FromField@
--- classes (as in @postgresql-simple@). The combined class follows
--- @persistent@'s @PersistField@, keeps the instance count halved, and lets
--- the roundtrip law above be stated (and QuickChecked) per instance.
--- Splitting later is a mechanical, backwards-compatible refactor.
-
--- Decision: decoding is strict and canonical. Each Haskell type decodes
--- only from the constructor(s) carrying exactly its payload; there is no
--- implicit numeric widening or narrowing (an @INT@ column must be read as
--- 'Int32', not 'Int64'). The alternative, accepting any integral
--- constructor with a bounds check, was rejected: it needs partial
--- conversions with an overflow error case, and it makes decoding depend on
--- the runtime value instead of the column type. For the same reason there
--- are no instances for 'Int' and 'Word': their width is platform
--- dependent, use 'Data.Int.Int64' or 'Data.Word.Word64'.
+Decoding is strict and canonical: each Haskell type decodes only from the
+constructor(s) carrying exactly its payload, with no implicit numeric
+widening or narrowing. There are no instances for 'Int' and 'Word'
+because their width is platform dependent; use 'Data.Int.Int64' or
+'Data.Word.Word64'.
 -}
 module Database.MySQL.Field
     ( -- * The Field class
@@ -110,14 +100,6 @@ instance Exception DecodeError
 -- Instances must obey: @'fromField' ('toField' x) == 'Right' x@.
 -- (Caveats: nested 'Maybe' collapses through @NULL@, and IEEE @NaN@
 -- fails the literal equation; see the module header.)
---
--- This is the first prism law from @lens@
--- (@preview l (review l x) == Just x@): an instance is half of a
--- @Prism' MySQLValue a@ with @review = 'toField'@ and
--- @preview = either (const Nothing) Just . 'fromField'@. The second prism
--- law (a successful decode re-encodes to the same value) intentionally
--- does not hold for every instance: 'Bool' and 'LocalTime' accept more
--- than one encoding.
 class Field a where
     toField :: a -> MySQLValue
     fromField :: MySQLValue -> Either DecodeError a
