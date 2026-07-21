@@ -59,7 +59,10 @@ module Database.MySQL.Field
     , encodeDouble, decodeDouble
     , encodeScientific, decodeScientific
     , encodeText, decodeText
+    , encodeLazyText, decodeLazyText
+    , encodeString, decodeString
     , encodeByteString, decodeByteString
+    , encodeLazyByteString, decodeLazyByteString
     , encodeDay, decodeDay
     , encodeLocalTime, decodeLocalTime
     , encodeTimeOfDay, decodeTimeOfDay
@@ -69,9 +72,12 @@ module Database.MySQL.Field
 
 import           Control.Exception                  (Exception)
 import           Data.ByteString                    (ByteString)
+import qualified Data.ByteString.Lazy               as LazyByteString
 import           Data.Int                           (Int16, Int32, Int64, Int8)
 import           Data.Scientific                    (Scientific)
 import           Data.Text                          (Text)
+import qualified Data.Text                          as Text
+import qualified Data.Text.Lazy                     as LazyText
 import           Data.Time.Calendar                 (Day)
 import           Data.Time.LocalTime                (LocalTime, TimeOfDay)
 import           Data.Word                          (Word16, Word32, Word64,
@@ -249,6 +255,44 @@ instance Field Text where
     toField = encodeText
     fromField = decodeText
 
+encodeLazyText :: LazyText.Text -> MySQLValue
+encodeLazyText = MySQLText . LazyText.toStrict
+
+decodeLazyText :: MySQLValue -> Either DecodeError LazyText.Text
+decodeLazyText (MySQLText t) = Right (LazyText.fromStrict t)
+decodeLazyText value         = decodeFailure (ExpectedTypeName "lazy Text") value
+
+instance Field LazyText.Text where
+    toField = encodeLazyText
+    fromField = decodeLazyText
+
+-- | Crashes on lone surrogate code points (@\\xD800@ to @\\xDFFF@):
+-- they are not valid Unicode text and cannot be represented in MySQL's
+-- UTF-8 wire format. @Text.pack@ would silently replace them with
+-- @U+FFFD@, corrupting the data; a surrogate in a 'String' means a bug
+-- upstream, so fail loudly here instead.
+encodeString :: String -> MySQLValue
+encodeString string =
+    if any isLoneSurrogate string
+        then error ("Database.MySQL.Field.encodeString: \
+                    \lone surrogate code point in String: " <> show string
+                    <> ". This String is not valid Unicode, so the bug is \
+                       \in whatever produced it (truncated UTF-16 or bad \
+                       \decoding upstream). Fix that producer, or filter \
+                       \the surrogates out before calling toField.")
+        else MySQLText (Text.pack string)
+
+isLoneSurrogate :: Char -> Bool
+isLoneSurrogate character = '\xD800' <= character && character <= '\xDFFF'
+
+decodeString :: MySQLValue -> Either DecodeError String
+decodeString (MySQLText t) = Right (Text.unpack t)
+decodeString value         = decodeFailure (ExpectedTypeName "String") value
+
+instance Field String where
+    toField = encodeString
+    fromField = decodeString
+
 encodeByteString :: ByteString -> MySQLValue
 encodeByteString = MySQLBytes
 
@@ -259,6 +303,17 @@ decodeByteString value           = decodeFailure (ExpectedTypeName "ByteString")
 instance Field ByteString where
     toField = encodeByteString
     fromField = decodeByteString
+
+encodeLazyByteString :: LazyByteString.ByteString -> MySQLValue
+encodeLazyByteString = MySQLBytes . LazyByteString.toStrict
+
+decodeLazyByteString :: MySQLValue -> Either DecodeError LazyByteString.ByteString
+decodeLazyByteString (MySQLBytes bs) = Right (LazyByteString.fromStrict bs)
+decodeLazyByteString value           = decodeFailure (ExpectedTypeName "lazy ByteString") value
+
+instance Field LazyByteString.ByteString where
+    toField = encodeLazyByteString
+    fromField = decodeLazyByteString
 
 encodeDay :: Day -> MySQLValue
 encodeDay = MySQLDate
