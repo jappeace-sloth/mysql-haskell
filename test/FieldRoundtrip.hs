@@ -5,8 +5,6 @@
 -- that a roundtrip cannot exercise.
 module FieldRoundtrip (tests) where
 
-import           Control.Exception                  (ErrorCall (..), evaluate,
-                                                     try)
 import           Data.ByteString                    (ByteString)
 import qualified Data.ByteString.Lazy               as LazyByteString
 import           Data.Int                           (Int16, Int32, Int64, Int8)
@@ -22,8 +20,7 @@ import           Database.MySQL.Field
 import           Database.MySQL.Protocol.MySQLValue (MySQLValue (..))
 import           Test.QuickCheck.Instances          ()
 import           Test.Tasty
-import           Test.Tasty.HUnit                   (assertBool, assertFailure,
-                                                     testCase, (@?=))
+import           Test.Tasty.HUnit                   (testCase, (@?=))
 import           Test.Tasty.QuickCheck              (Property, testProperty,
                                                      (===))
 
@@ -88,13 +85,7 @@ tests = testGroup "Field"
                 @?= Right Nothing
         , testCase "NaN encodes losslessly (roundtrip == fails only since NaN /= NaN)" $
             fmap isNaN (decodeDouble (encodeDouble (0 / 0))) @?= Right True
-        , testCase "lone surrogate in String crashes encode loudly" $ do
-            result <- try (evaluate (encodeString ['\xD800']))
-            case result of
-                Left (ErrorCall message) ->
-                    assertBool "error message names the surrogate problem"
-                               ("surrogate" `elem` words message)
-                Right value ->
-                    assertFailure ("expected a crash, got: " <> show value)
+        , testCase "lone surrogate in String is rejected by encodeString" $
+            encodeString ['\xD800'] @?= Left (EncodeStringLoneSurrogate ['\xD800'])
         ]
     ]

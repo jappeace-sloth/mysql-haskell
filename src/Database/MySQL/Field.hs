@@ -43,9 +43,10 @@ because their width is platform dependent; use 'Data.Int.Int64' or
 module Database.MySQL.Field
     ( -- * The Field class
       Field (..)
-      -- * Decoding errors
+      -- * Conversion errors
     , DecodeError (..)
     , ExpectedTypeName (..)
+    , EncodeStringError (..)
       -- * Named conversions backing the instances
     , encodeInt8, decodeInt8
     , encodeWord8, decodeWord8
@@ -60,7 +61,7 @@ module Database.MySQL.Field
     , encodeScientific, decodeScientific
     , encodeText, decodeText
     , encodeLazyText, decodeLazyText
-    , encodeString, decodeString
+    , encodeString, encodeStringOrCrash, decodeString
     , encodeByteString, decodeByteString
     , encodeLazyByteString, decodeLazyByteString
     , encodeDay, decodeDay
@@ -266,31 +267,46 @@ instance Field LazyText.Text where
     toField = encodeLazyText
     fromField = decodeLazyText
 
--- | Crashes on lone surrogate code points (@\\xD800@ to @\\xDFFF@):
--- they are not valid Unicode text and cannot be represented in MySQL's
--- UTF-8 wire format. @Text.pack@ would silently replace them with
--- @U+FFFD@, corrupting the data; a surrogate in a 'String' means a bug
--- upstream, so fail loudly here instead.
-encodeString :: String -> MySQLValue
+-- | All the ways encoding a 'String' can fail.
+data EncodeStringError
+    = EncodeStringLoneSurrogate !String
+      -- ^ The 'String' contained a lone surrogate code point (@\\xD800@
+      -- to @\\xDFFF@), which is not valid Unicode text and cannot be
+      -- represented in MySQL's UTF-8 wire format. @Text.pack@ would
+      -- silently replace it with @U+FFFD@, corrupting the data.
+    deriving (Show, Eq)
+
+instance Exception EncodeStringError
+
+encodeString :: String -> Either EncodeStringError MySQLValue
 encodeString string =
     if any isLoneSurrogate string
-        then error ("Database.MySQL.Field.encodeString: \
-                    \lone surrogate code point in String: " <> show string
-                    <> ". This String is not valid Unicode, so the bug is \
-                       \in whatever produced it (truncated UTF-16 or bad \
-                       \decoding upstream). Fix that producer, or filter \
-                       \the surrogates out before calling toField.")
-        else MySQLText (Text.pack string)
+        then Left (EncodeStringLoneSurrogate string)
+        else Right (MySQLText (Text.pack string))
 
 isLoneSurrogate :: Char -> Bool
 isLoneSurrogate character = '\xD800' <= character && character <= '\xDFFF'
+
+-- | Backs the 'Field' 'String' instance: the class fixes
+-- @toField :: a -> MySQLValue@, so the 'EncodeStringLoneSurrogate'
+-- failure from 'encodeString' crashes here instead of being returned.
+encodeStringOrCrash :: String -> MySQLValue
+encodeStringOrCrash string = case encodeString string of
+    Right value -> value
+    Left (EncodeStringLoneSurrogate offending) ->
+        error ("Database.MySQL.Field.encodeString: \
+               \lone surrogate code point in String: " <> show offending
+               <> ". This String is not valid Unicode, so the bug is \
+                  \in whatever produced it (truncated UTF-16 or bad \
+                  \decoding upstream). Fix that producer, or filter \
+                  \the surrogates out before calling toField.")
 
 decodeString :: MySQLValue -> Either DecodeError String
 decodeString (MySQLText t) = Right (Text.unpack t)
 decodeString value         = decodeFailure (ExpectedTypeName "String") value
 
 instance Field String where
-    toField = encodeString
+    toField = encodeStringOrCrash
     fromField = decodeString
 
 encodeByteString :: ByteString -> MySQLValue
